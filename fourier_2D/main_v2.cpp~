@@ -1,0 +1,305 @@
+
+
+/////////////////////////////////////////////////////////////////////////////
+//Included files
+/////////////////////////////////////////////////////////////////////////////
+
+#include <fftw3.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <unistd.h>
+
+
+
+
+
+
+using namespace std;
+
+timespec diff(timespec start, timespec end)
+{
+	timespec temp;
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		temp.tv_sec = end.tv_sec-start.tv_sec-1;
+		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec-start.tv_sec;
+		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+	return temp;
+}
+
+int main(int argc, char *argv[]){
+
+/////////////////////////////////////////////////////////////////////////////
+//Variables
+/////////////////////////////////////////////////////////////////////////////
+
+double hanning_1 [801];
+double hanning_2 [512];
+double matrix_2d [512][801];
+struct timespec start, end, total;
+double matrix_2dout [512][801];
+double matrix_final [((512/2)+1)][((802))];
+double *in;
+double h1=0;
+char bkt[14];
+int i=0;
+int h=0;
+int k=0;
+fftw_complex *inl[512];
+fftw_complex *out, *out2, *in2;
+fftw_plan p, p2;
+in = (double*) fftw_malloc(sizeof(double) * 801);
+//////////////////////////////////////////////////////////////////////
+//////////////////////////THIS IS IMPORTANT CODE!!!!!!!////////////////
+/////////////////////////////////////////////////////////////////////
+
+fftw_complex *inl[512];
+
+for(int i=0;i<512;i++){
+inl[i]= (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (512));
+}
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * ((801/2)+1));
+in2 = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (512));
+out2 = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * ((512/2)+1));
+ifstream hann_1;
+hann_1.open("hann1_801.csv");
+ifstream hann_2;
+hann_2.open("hann2_512.csv");
+ifstream Matrix_in;
+Matrix_in.open("radar_data.csv");
+p = fftw_plan_dft_r2c_1d(801, in, out, FFTW_ESTIMATE);
+p2 = fftw_plan_dft_1d(512, in2, out2, FFTW_FORWARD, FFTW_ESTIMATE);
+ofstream mtx_out;
+mtx_out.open("mtx_out_2D.csv");
+
+
+
+
+
+
+cout<<"variables allocated...\nfiles opened...\n"<<endl;
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+//Check to see if all three files opened correctly
+/////////////////////////////////////////////////////////////////////////////
+
+	if (hann_1.is_open()&&hann_2.is_open()&&Matrix_in.is_open()){
+
+
+/////////////////////////////////////////////////////////////////////////////
+//Read in hanning vector 1 into the hanning_1 array
+/////////////////////////////////////////////////////////////////////////////
+
+
+		while(hann_1.good()){
+			hann_1.getline(bkt,14,'\n');
+			hanning_1[i]= atof(bkt);
+			i++;
+		}
+
+/////////////////////////////////////////////////////////////////////////////
+//Read in hanning vector 2 into the hanning_2 array
+/////////////////////////////////////////////////////////////////////////////
+
+	
+		while(hann_2.good()){
+			hann_2.getline(bkt,14,'\n');
+			hanning_2[h]= atof(bkt);
+			h++;
+		}
+
+/////////////////////////////////////////////////////////////////////////////
+//Read in the 2D matrix file
+/////////////////////////////////////////////////////////////////////////////
+
+    for(int row = 0; row < 512; ++row)
+    {
+        std::string line;
+        std::getline(Matrix_in, line);
+        if ( !Matrix_in.good() )
+            break;
+
+        std::stringstream iss(line);
+
+        for (int col = 0; col < 801; ++col)
+        {
+            std::string val;
+            std::getline(iss, val, ',');
+            if ( !iss.good() )
+                break;
+
+            std::stringstream convertor(val);
+            convertor >> matrix_2d[row][col];
+        }
+    }
+
+}
+else{
+cout<<"Error opening the file.";
+}
+
+///////////////////////////////////////
+///Start the performance timing here///
+///////////////////////////////////////
+
+
+	clock_gettime(CLOCK_REALTIME, &start);
+
+/////////////////////////////////////////////////////////////////////////////
+//multiplying the input matrix by hanning vector 1
+/////////////////////////////////////////////////////////////////////////////
+
+		for(int j=801;j--;){
+			for(int i=512;i--;){
+			matrix_2d[i][j]*=hanning_1[j];
+			}
+		}
+
+/////////////////////////////////////////////////////////////////////////////
+//multiplying the input matrix by hanning vector 2
+/////////////////////////////////////////////////////////////////////////////
+
+
+		for(int j=512;j--;){
+			for(int i=801;i--;){
+			matrix_2d[j][i]*=hanning_2[j];
+			}
+		}
+/*
+		for(int j=0;j<512;j++){
+			for(int i=0; i<801;i++){
+			cout<<matrix_2d[j][i]<<", ";
+			}
+			cout<<endl;
+		}*/
+
+
+////////////////////////////////////////////////////////////////////////////
+//perform the FFT on all 512 rows
+//create the fftw plan it's currently set to the most time consuming "planning" but possibly the quickest execution
+//TODO: I need to have this to transpose the array as it goes 	into 
+/////////////////////////////////////////////////////////////////////////////
+	
+	for(int j=0;j<512;j++){
+		for(int i=0;i<801;i++){
+			in[i]=matrix_2d[j][i];
+		}
+
+		fftw_execute(p); 
+
+		k=0;
+		for(int l=0; l<(int)((801/2)+1);l++){
+				matrix_2dout[j][k]=out[l][0];
+				k++;
+				matrix_2dout[j][k]=out[l][1];
+				k++;
+		}
+
+
+		/*for(int i=0; i<(int)((801/2)+1);i++){
+		mtx_out<<out[i][0]<<","<<out[i][1]<<",";
+		}
+		mtx_out<<",\n";*/
+
+	}
+
+	//mtx_out.close();
+k=0;
+int run =0;
+for(int j=0; j<(int)802;j++){
+
+
+/////////the loop below fills the in2 array with columns j and j+1 from matrix_2dout
+	for(int i=0; i<512;i++){
+		in2[i][0] = matrix_2dout[i][j];
+		
+		in2[i][1] = matrix_2dout[i][j+1];
+
+
+	}
+		fftw_execute(p2); 
+		//cout<<"Ran the plan "<<++run<<" times!\n";
+		j++;
+////
+////copy out 2 array 
+////
+
+	for(int l=0; l<(int)((512/2)+1);l++){
+		matrix_final[l][k]=out[l][0];
+		matrix_final[l][k+1]=out[l][1];
+		}
+k+=2;
+		//cout<<"Copied he array "<<run<<" times!\n";
+}
+
+		for(int i=0; i<(int)(512);i++){
+		//std::cout<<in2[i][0]<<","<<in2[i][1]<<",   "<<out2[i][0]<<", "<<out2[i][1]<<endl;
+		}
+
+	clock_gettime(CLOCK_REALTIME, &end);
+
+
+cout<<"------------------\n";
+
+total =diff(start, end);
+
+
+cout<<"Total time for processing is "<<total.tv_sec<<"."<<total.tv_nsec<<"us"<<endl;
+
+			//cout<<"\n\nStarting the file\n";
+	for(int k=0; k<(int)((512/2)+1);k++){
+		for(int i=0; i<(int)((800));i++){
+		mtx_out<<matrix_final[k][i]<<","<<matrix_final[k][++i]<<",";
+		}
+		//cout<<"Wrote row number "<<k<<"\n";
+		mtx_out<<",\n";
+}
+
+///////////////////////////////////////////////////////////////////
+//Closing all the stuff
+///////////////////////////////////////////////////////////////////
+
+
+	cout<<"closing the file\n";
+	mtx_out.close();
+	cout<<"closed the file1\n";
+	hann_1.close();
+	cout<<"closed the file2\n";
+	hann_2.close();
+	cout<<"closed the file3\n";
+	Matrix_in.close();
+cout<<"Clearing plan1!\n";
+fftw_destroy_plan(p);
+cout<<"Clearing plan2!\n";
+fftw_destroy_plan(p2);
+cout<<"Clearing in!\n";
+fftw_free(in); 
+cout<<"Clearing in1!\n";
+fftw_free(in2); 
+cout<<"Clearing out!\n";
+fftw_free(out);
+cout<<"Clearing out2!\n";
+
+
+return(0);
+
+
+
+
+
+}
+
+

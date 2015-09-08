@@ -1,0 +1,8 @@
+prefix=/home/dan/catkin_ws/install
+
+Name: hello_radar
+Description: Description of hello_radar
+Version: 0.9.7
+Cflags: -I/home/dan/catkin_ws/install/include
+Libs: -L/home/dan/catkin_ws/install/lib -lbeginner_tutorials
+Requires: roscpp rospy std_msgs message_generation message_runtime

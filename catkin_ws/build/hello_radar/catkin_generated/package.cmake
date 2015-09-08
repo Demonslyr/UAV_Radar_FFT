@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "hello_radar")
+set(hello_radar_MAINTAINER "dan <dr.murtha@me.com>")
+set(hello_radar_DEPRECATED "")
+set(hello_radar_VERSION "0.9.7")
+set(hello_radar_BUILD_DEPENDS "message_generation" "roscpp" "rospy" "std_msgs")
+set(hello_radar_RUN_DEPENDS "message_runtime" "roscpp" "rospy" "std_msgs" "message_generation")
+set(hello_radar_BUILDTOOL_DEPENDS "catkin")
